@@ -6,11 +6,11 @@ A configurable rules engine for GitHub webhook events delivered through Google C
 
 Consumes verified webhook messages from ghook2pubsub, evaluates explicit repository rules, and adds matching issues and pull requests to GitHub organization projects. No privileged pull request workflow is required.
 
-Configure a dedicated Pub/Sub subscription, a mounted rules file, and a GitHub token. See [configuration](docs/configuration.md), [architecture](docs/architecture.md), and [operations](docs/operations.md). [Example rules](examples/rules.json) route public and private repositories to separate projects.
+Configure a dedicated Pub/Sub subscription, a mounted rules file, and GitHub App credentials (or a static token). See [configuration](docs/configuration.md), [architecture](docs/architecture.md), and [operations](docs/operations.md). [Example rules](examples/rules.json) route public and private repositories to separate projects.
 
 ```sh
 go test ./...
 go run . --rules-file examples/rules.json --check-config
 ```
 
-The snapshot image is `ghcr.io/unitvectory-labs/ghook4action-snapshot:dev`, built for AMD64 and ARM64. Initial deployment and live end-to-end verification are pending infrastructure and credential setup.
+The snapshot image is `ghcr.io/unitvectory-labs/ghook4action-snapshot:dev`, built for AMD64 and ARM64. Initial deployment and live end-to-end verification are pending deployment approval.

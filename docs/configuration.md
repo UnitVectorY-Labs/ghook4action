@@ -2,9 +2,17 @@
 
 Set `PUBSUB_SUBSCRIPTION` to the full `projects/PROJECT/subscriptions/SUBSCRIPTION` resource. Use a dedicated pull subscription; sharing a subscription with an audit consumer splits deliveries rather than broadcasting them.
 
-Set `RULES_FILE` (default `rules.json`) to a mounted JSON rules file. Validate offline with `/server --rules-file /config/rules.json --check-config`. A restart is required to reload rules or a rotated token.
+Set `RULES_FILE` (default `rules.json`) to a mounted JSON rules file. Validate offline with `/server --rules-file /config/rules.json --check-config`. A restart is required to reload rules or rotated credential files.
 
-Supply exactly one of `GITHUB_TOKEN_FILE` (recommended mounted Secret) or `GITHUB_TOKEN`. Never put credentials in rules, command arguments, container images, or git.
+Choose exactly one authentication mode. For GitHub App authentication (recommended), set all three:
+
+- `GITHUB_APP_ID`: the numeric GitHub App ID.
+- `GITHUB_APP_INSTALLATION_ID`: the positive installation ID for the destination organization.
+- `GITHUB_APP_PRIVATE_KEY_FILE`: a mounted PEM private key file, such as `/secrets/private-key.pem`.
+
+The client signs short-lived JWTs and requests installation tokens scoped to organization Projects write, Issues read, and Pull requests read. It caches tokens in memory and renews before expiration. No client secret is needed. Tokens are never written to disk. Startup verifies access to every configured destination project before marking ready or consuming messages.
+
+Alternatively supply `GITHUB_TOKEN_FILE` or `GITHUB_TOKEN`. These static token modes do not refresh tokens. App variables cannot be combined with token variables, and partial App configuration fails startup. Never put credentials in rules, command arguments, container images, or git.
 
 `HEALTH_PORT` defaults to `8080`. CLI flags `--rules-file`, `--pubsub-subscription`, and `--health-port` override environment settings. `--version` prints the injected build version.
 

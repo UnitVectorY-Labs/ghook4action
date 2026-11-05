@@ -20,6 +20,7 @@ const maxResponseBytes = 1 << 20
 // Client never follows redirects and never exposes response bodies in errors.
 type Client struct {
 	token    string
+	app      *appCredentials
 	endpoint string
 	http     *http.Client
 	mu       sync.Mutex
@@ -31,7 +32,15 @@ func NewClient(token string) *Client {
 }
 
 func (c *Client) request(ctx context.Context, query string, variables map[string]any, out any) error {
-	if strings.TrimSpace(c.token) == "" {
+	token := c.token
+	if c.app != nil {
+		var err error
+		token, err = c.app.token(ctx, c.http)
+		if err != nil {
+			return err
+		}
+	}
+	if strings.TrimSpace(token) == "" {
 		return errors.New("GitHub token is required")
 	}
 	body, err := json.Marshal(map[string]any{"query": query, "variables": variables})
@@ -42,7 +51,7 @@ func (c *Client) request(ctx context.Context, query string, variables map[string
 	if err != nil {
 		return errors.New("cannot create GitHub request")
 	}
-	req.Header.Set("Authorization", "Bearer "+c.token)
+	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("User-Agent", "ghook4action")
@@ -52,6 +61,9 @@ func (c *Client) request(ctx context.Context, query string, variables map[string
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusUnauthorized && c.app != nil {
+			c.app.invalidate(token)
+		}
 		return fmt.Errorf("GitHub HTTP status %d", resp.StatusCode)
 	}
 	data, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes+1))
@@ -133,4 +145,14 @@ func (c *Client) AddToProject(ctx context.Context, owner string, number int, con
 		return errors.New("GitHub did not confirm project item")
 	}
 	return nil
+}
+
+// CheckProject verifies that the configured project is accessible and caches its
+// node ID. Callers should apply a startup deadline to ctx.
+func (c *Client) CheckProject(ctx context.Context, owner string, number int) error {
+	if owner == "" || number < 1 {
+		return errors.New("invalid project check arguments")
+	}
+	_, err := c.projectID(ctx, owner, number)
+	return err
 }

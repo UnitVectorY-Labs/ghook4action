@@ -2,15 +2,19 @@
 
 ## GitHub credentials
 
-Create a fine-grained token owned by UnitVectorY-Labs, with organization **Projects: read and write**, repository **Issues: read**, and **Pull requests: read**, covering all public/private repositories that rules may match. Metadata read is implicit. The issuing user must be able to write both destination projects. Complete organization approval if required. No repository contents write or Actions permissions are needed.
+Register a private GitHub App owned by the organization and install it on all repositories that rules may match. Grant organization **Projects: read and write**, repository **Issues: read**, and **Pull requests: read**. Metadata read is implicit. Webhooks can remain disabled because ghook2pubsub already receives events. No client secret, repository contents permission, or Actions permission is needed.
 
-Projects write is the documented project mutation permission; repository read access allows private issue/PR visibility. Validate both public and private routing before removing existing automation. See [GitHub project automation authentication](https://docs.github.com/en/issues/planning-and-tracking-with-projects/automating-your-project/using-the-api-to-manage-projects) and [fine-grained permissions](https://docs.github.com/en/rest/authentication/permissions-required-for-fine-grained-personal-access-tokens).
+Generate the App's RSA private key and store the PEM outside git, accessible only to the operating account. Mount it read-only from a Kubernetes Secret. Configure the App ID, installation ID, and key path as described in [configuration](configuration.md). The service generates installation access tokens and automatically renews them before their one-hour expiration. Concurrent callbacks share the cached token and serialized refresh. Requests have bounded timeouts and refuse redirects. Failure responses never expose token or body contents in logs. See [GitHub App authentication](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/authenticating-as-a-github-app-installation).
 
-Store the token outside git, then provision the Kubernetes Secret through an approved deployment operation. Do not paste the token into an issue, pull request, chat, or shell command history. Mounted files are read only at startup. Use a finite expiry and rotate before expiration. A future GitHub App installation token can be supplied through the same interface, but automatic App token refresh is not implemented.
+Startup checks that every configured project can be resolved before consuming messages. This validates project visibility, but a controlled live test is still required to verify write access and private repository access. For a private repository, do not infer access from public project lookup alone.
+
+Rotate the private key by generating a new one, updating the Secret, and restarting the deployment. Verify successful token generation and message processing before revoking the old key. The process reads key files at startup. Do not paste keys or tokens into chat, issues, shell history, or source control.
+
+Static fine-grained tokens remain supported as an alternative. Grant the same organization and repository permissions, cover the required repositories, and mount through `GITHUB_TOKEN_FILE`. Static tokens require operator-managed rotation and expiry monitoring.
 
 ## Deployment and rollout
 
-The Docker image uses nonroot distroless and supports a read-only root filesystem. Mount rules at `/config/rules.json` and token at `/secrets/github-token`. Use Application Default Credentials through the cluster's projected Workload Identity Federation token; no GCP service account key is needed. Grant `roles/pubsub.subscriber` only on the dedicated subscription.
+The Docker image uses nonroot distroless and supports a read-only root filesystem. Mount rules at `/config/rules.json` and the App private key at `/secrets/private-key.pem`. Use Application Default Credentials through the cluster's projected Workload Identity Federation token; no GCP service account key is needed. Grant `roles/pubsub.subscriber` only on the dedicated subscription.
 
 The development workflow publishes `ghcr.io/unitvectory-labs/ghook4action-snapshot:dev` for AMD64 and ARM64. Prefer pinning its manifest digest for the first reviewed deployment. No live deployment should occur before the subscription IAM is applied and credentials are provisioned. Probe `/healthz` and `/readyz` on port 8080. Begin with one replica.
 

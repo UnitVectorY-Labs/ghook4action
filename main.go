@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -18,7 +17,6 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/UnitVectorY-Labs/ghook4action/internal/consumer"
-	gh "github.com/UnitVectorY-Labs/ghook4action/internal/github"
 	"github.com/UnitVectorY-Labs/ghook4action/internal/rules"
 )
 
@@ -55,19 +53,9 @@ func run() error {
 	if _, _, err := consumer.ParseSubscription(*subscription); err != nil {
 		return err
 	}
-	token := strings.TrimSpace(os.Getenv("GITHUB_TOKEN"))
-	if path := os.Getenv("GITHUB_TOKEN_FILE"); path != "" {
-		if token != "" {
-			return errors.New("set only one of GITHUB_TOKEN and GITHUB_TOKEN_FILE")
-		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return errors.New("cannot read GITHUB_TOKEN_FILE")
-		}
-		token = strings.TrimSpace(string(data))
-	}
-	if token == "" {
-		return errors.New("GITHUB_TOKEN or GITHUB_TOKEN_FILE is required")
+	githubClient, err := configuredGitHubClient()
+	if err != nil {
+		return err
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
@@ -99,9 +87,18 @@ func run() error {
 		defer stop()
 		server.Shutdown(shutdownCtx)
 	}()
+	preflightCtx, stopPreflight := context.WithTimeout(ctx, 60*time.Second)
+	defer stopPreflight()
+	for _, rule := range cfg.Rules {
+		for _, action := range rule.Actions {
+			if err := githubClient.CheckProject(preflightCtx, action.Project.Owner, action.Project.Number); err != nil {
+				return fmt.Errorf("GitHub project access check failed: %w", err)
+			}
+		}
+	}
 	ready.Store(true)
 	slog.Info("starting subscriber", "version", Version, "subscription", *subscription)
-	err = consumer.Run(ctx, *subscription, cfg, gh.NewClient(token))
+	err = consumer.Run(ctx, *subscription, cfg, githubClient)
 	select {
 	case <-serverErrors:
 		return errors.New("health server failed")
