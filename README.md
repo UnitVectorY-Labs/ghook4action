@@ -6,11 +6,11 @@ A configurable rules engine for GitHub webhook events delivered through Google C
 
 Consumes verified webhook messages from ghook2pubsub, evaluates explicit repository rules, and adds matching issues and pull requests to GitHub organization projects. No privileged pull request workflow is required.
 
-Configure a dedicated Pub/Sub subscription, a mounted rules file, and GitHub App credentials (or a static token). See [configuration](docs/configuration.md), [architecture](docs/architecture.md), and [operations](docs/operations.md). [Example rules](examples/rules.json) route public and private repositories to separate projects.
+## Documentation
 
-```sh
-go test ./...
-go run . --rules-file examples/rules.json --check-config
-```
+See the [documentation](docs/README.md) for [installation](docs/INSTALL.md), [configuration](docs/CONFIGURATION.md), [usage](docs/USAGE.md), and [examples](docs/EXAMPLES.md).
 
-The snapshot image is `ghcr.io/unitvectory-labs/ghook4action-snapshot:dev`, built for AMD64 and ARM64. Live issue and pull request routing has been verified, including separate public/private project destinations. Standard snapshot builds trigger automatic deployment rollouts.
+## Related applications
+
+- [ghook2pubsub](https://github.com/UnitVectorY-Labs/ghook2pubsub) receives GitHub webhooks, verifies signatures, and publishes events to Pub/Sub for this application to consume.
+- [pubsub2postgresaudit](https://github.com/UnitVectorY-Labs/pubsub2postgresaudit) stores webhook messages in PostgreSQL for auditing through its own subscription, independently of this application's project actions.

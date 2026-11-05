@@ -1,3 +1,10 @@
+---
+layout: default
+title: Configuration
+nav_order: 3
+permalink: /configuration
+---
+
 # Configuration
 
 Set `PUBSUB_SUBSCRIPTION` to the full `projects/PROJECT/subscriptions/SUBSCRIPTION` resource. Use a dedicated pull subscription; sharing a subscription with an audit consumer splits deliveries rather than broadcasting them.
@@ -21,3 +28,18 @@ See [example rules](../examples/rules.json). The example routes opened issues an
 Configuration version is `1`. Each named rule has `match` and `actions`. Match fields are ANDed; entries within `events` or `actions` are ORed. `repository_owner` and the explicit `repository_private` boolean are required. Optional `repositories` limits matching to those repository names. All matching rules execute in file order. The initial supported action is `add_to_project`, whose project contains organization `owner` and positive project `number`.
 
 Rules are data, with no scripts, shell interpolation, remote templates, or arbitrary expressions. Unknown keys and invalid configuration fail startup. Narrow organization matching prevents unrelated webhook traffic from invoking privileged actions.
+
+## Settings reference
+
+| Environment variable | Default | Purpose |
+| --- | --- | --- |
+| `PUBSUB_SUBSCRIPTION` | Required | Full dedicated pull subscription resource name. |
+| `RULES_FILE` | `rules.json` | Local rules JSON file. |
+| `HEALTH_PORT` | `8080` | HTTP liveness and readiness port. |
+| `GITHUB_APP_ID` | Unset | GitHub App ID; use with both App settings below. |
+| `GITHUB_APP_INSTALLATION_ID` | Unset | Organization installation ID. |
+| `GITHUB_APP_PRIVATE_KEY_FILE` | Unset | Path to the App PEM private key. |
+| `GITHUB_TOKEN_FILE` | Unset | Alternative static token file. |
+| `GITHUB_TOKEN` | Unset | Alternative static token value. |
+
+Choose App authentication or one static token source. See [Installation](INSTALL.md) for credentials and [Examples](EXAMPLES.md) for a complete rules file.
