@@ -12,4 +12,4 @@ config:
   codecov:
     enabled: false
   docs:
-    enabled: false
+    enabled: true

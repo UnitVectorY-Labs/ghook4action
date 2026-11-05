@@ -1,3 +1,10 @@
+---
+layout: default
+title: Architecture
+nav_order: 7
+permalink: /architecture
+---
+
 # Architecture
 
 GitHub → ghook2pubsub → Pub/Sub topic → dedicated pull subscription → ghook4action → GitHub Projects API.
