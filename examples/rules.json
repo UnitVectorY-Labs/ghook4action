@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "name": "public-repositories",
+      "match": {
+        "events": ["issues", "pull_request"],
+        "actions": ["opened"],
+        "repository_owner": "UnitVectorY-Labs",
+        "repository_private": false
+      },
+      "actions": [{"type": "add_to_project", "project": {"owner": "UnitVectorY-Labs", "number": 41}}]
+    },
+    {
+      "name": "private-repositories",
+      "match": {
+        "events": ["issues", "pull_request"],
+        "actions": ["opened"],
+        "repository_owner": "UnitVectorY-Labs",
+        "repository_private": true
+      },
+      "actions": [{"type": "add_to_project", "project": {"owner": "UnitVectorY-Labs", "number": 42}}]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+name: ghook4action
+default_branch: main
+config:
+  add_to_project: false
+  docker_snapshot_rollout: false
+  osv: sarif
+  description: "A configurable rules engine for GitHub webhook events delivered through Google Cloud Pub/Sub."
+  license: MIT
+  language: go
+  release: docker-go
+  release_github: false
+  status: wip
+  justfile: false
+  codecov:
+    enabled: false
+  docs:
+    enabled: false

@@ -1,0 +1,75 @@
+package webhook
+
+import (
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
+	"github.com/klauspost/compress/zstd"
+	"net/url"
+	"testing"
+)
+
+const issue = `{"action":"opened","repository":{"owner":{"login":"Org"},"name":"repo","private":false},"issue":{"node_id":"I_123"}}`
+
+func TestDecodeTransports(t *testing.T) {
+	for _, format := range []string{"json", "form", "gzip", "zstd"} {
+		t.Run(format, func(t *testing.T) {
+			data := []byte(issue)
+			attrs := map[string]string{"gh_event": "issues", "action": "opened"}
+			switch format {
+			case "form":
+				data = []byte(url.Values{"payload": {issue}}.Encode())
+			case "gzip":
+				var b bytes.Buffer
+				w := gzip.NewWriter(&b)
+				w.Write(data)
+				w.Close()
+				data = b.Bytes()
+				attrs["compression"] = "gzip"
+			case "zstd":
+				w, _ := zstd.NewWriter(nil)
+				data = w.EncodeAll(data, nil)
+				w.Close()
+				attrs["compression"] = "zstd"
+			}
+			event, err := Decode(data, attrs)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if event.ContentID != "I_123" || event.RepositoryPrivate == nil || *event.RepositoryPrivate || event.RepositoryOwner != "Org" {
+				t.Fatalf("bad event: %+v", event)
+			}
+		})
+	}
+}
+func TestRequiresPrivacyAndBaseRepository(t *testing.T) {
+	var p map[string]any
+	json.Unmarshal([]byte(issue), &p)
+	delete(p["repository"].(map[string]any), "private")
+	data, _ := json.Marshal(p)
+	if _, err := Decode(data, map[string]string{"gh_event": "issues"}); err == nil {
+		t.Fatal("missing privacy accepted")
+	}
+	data = []byte(`{"action":"opened","repository":{"owner":{"login":"Base"},"name":"repo","private":true},"pull_request":{"node_id":"PR_1","head":{"repo":{"private":false,"owner":{"login":"Fork"}}}}}`)
+	e, err := Decode(data, map[string]string{"gh_event": "pull_request"})
+	if err != nil || e.RepositoryOwner != "Base" || !*e.RepositoryPrivate || e.ContentID != "PR_1" {
+		t.Fatalf("wrong repository: %+v %v", e, err)
+	}
+}
+func TestRejectInvalidAndBounded(t *testing.T) {
+	for _, tc := range []struct {
+		data  []byte
+		attrs map[string]string
+	}{{[]byte(issue), map[string]string{"gh_event": "issues", "action": "closed"}}, {[]byte("nope"), nil}, {[]byte(issue), map[string]string{"compression": "brotli"}}, {[]byte("nope"), map[string]string{"compression": "gzip"}}} {
+		if _, err := Decode(tc.data, tc.attrs); err == nil {
+			t.Fatal("invalid accepted")
+		}
+	}
+	var b bytes.Buffer
+	w := gzip.NewWriter(&b)
+	w.Write(bytes.Repeat([]byte("x"), MaxPayloadBytes+1))
+	w.Close()
+	if _, err := Decode(b.Bytes(), map[string]string{"compression": "gzip"}); err == nil {
+		t.Fatal("oversize decompression accepted")
+	}
+}
