@@ -13,4 +13,4 @@ go test ./...
 go run . --rules-file examples/rules.json --check-config
 ```
 
-The snapshot image is `ghcr.io/unitvectory-labs/ghook4action-snapshot:dev`, built for AMD64 and ARM64. Initial deployment and live end-to-end verification are pending deployment approval.
+The snapshot image is `ghcr.io/unitvectory-labs/ghook4action-snapshot:dev`, built for AMD64 and ARM64. Live issue and pull request routing has been verified, including separate public/private project destinations. Standard snapshot builds trigger automatic deployment rollouts.
