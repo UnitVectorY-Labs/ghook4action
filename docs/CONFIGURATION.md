@@ -23,7 +23,7 @@ Alternatively supply `GITHUB_TOKEN_FILE` or `GITHUB_TOKEN`. These static token m
 
 `HEALTH_PORT` defaults to `8080`. CLI flags `--rules-file`, `--pubsub-subscription`, and `--health-port` override environment settings. `--version` prints the injected build version.
 
-See [example rules](../examples/rules.json). The example routes opened issues and pull requests in UnitVectorY-Labs public repositories to project 41, and private repositories to project 42. These are examples, not application defaults.
+See [example rules](../examples/rules.json). The example routes public and private repositories to separate projects. Replace its organization and project numbers before use; these are examples, not application defaults.
 
 Configuration version is `1`. Each named rule has `match` and `actions`. Match fields are ANDed; entries within `events` or `actions` are ORed. `repository_owner` and the explicit `repository_private` boolean are required. Optional `repositories` limits matching to those repository names. All matching rules execute in file order. The initial supported action is `add_to_project`, whose project contains organization `owner` and positive project `number`.
 
