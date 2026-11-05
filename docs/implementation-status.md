@@ -1,10 +1,7 @@
-# Initial rollout status
+# Rollout status
 
-- Application and configuration are prepared independently of destination project constants.
-- Infrastructure PR (merged and production apply succeeded): https://github.com/UnitVectorY-Labs/unitvectory-labs-management-tofu/pull/123. Reuses existing filtered subscription and grants only its subscriber role to the new workload identity.
-- Repository standards draft PR: https://github.com/UnitVectorY-Labs/uvy-labs-gitrepoforge/pull/20. Adds `add_to_project: false` and `docker_snapshot_rollout: false` opt-outs. Until merged and the local templates updated, the regular config checkout does not recognize this new key. The app was generated using the isolated PR worktree.
-- The initial snapshot workflow disables automatic cluster rollout using `docker_snapshot_rollout: false` while deployment remains unapproved.
-- Deployment manifests remain local to the Talos checkout, outside the normal apply-all path until approved. No live cluster resource is provisioned by building this repo.
-- Legacy workflows in other repositories remain in place until live routing is verified.
-
-GitHub App authentication is supported with automatically renewed installation tokens; the organization installation and key are configured in the pending local deployment. Live deployment and end-to-end verification remain pending approval.
+- Infrastructure PR https://github.com/UnitVectorY-Labs/unitvectory-labs-management-tofu/pull/123 is merged and applied. It grants subscription-scoped consumer access and retry backoff on the existing filtered subscription.
+- Repository standards PR https://github.com/UnitVectorY-Labs/uvy-labs-gitrepoforge/pull/20 retires the legacy workflow with a managed deletion rule. It also removes the template. No opt-out keys are required.
+- The standard snapshot workflow includes automatic rollout triggering, unchanged from other Go Docker applications.
+- GitHub App authentication renews installation tokens automatically. Production configuration uses the organization's installation and a mounted private key.
+- Live verification precedes removal of legacy workflows in other repositories.
