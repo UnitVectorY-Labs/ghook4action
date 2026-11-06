@@ -43,3 +43,7 @@ The checked-in [example rules](../examples/rules.json) contain two rules: public
 Add another `add_to_project` entry to a rule's `actions` array to send a matching item to multiple projects. All matching rules execute in file order; processing does not stop after the first match. If a later action fails, the message retries and earlier successful additions may run again safely.
 
 Unknown keys, unsupported event/action types, and missing required fields fail validation. Rules contain data only: scripts and arbitrary expressions are not supported.
+
+## Trigger workflows across repositories
+
+See [Workflow orchestration](WORKFLOWS.md) for a complete upstream CI to downstream dispatch example, an optional branch-push rule, and the downstream workflow contract. The [workflow rules example](../examples/workflows.json) can share one configuration's `rules` array with the project examples. Multiple dispatch actions fan out to multiple destinations; every matching rule runs.

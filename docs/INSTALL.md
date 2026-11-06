@@ -11,7 +11,7 @@ permalink: /install
 
 - A Pub/Sub topic receiving verified GitHub webhook events from [ghook2pubsub](https://github.com/UnitVectorY-Labs/ghook2pubsub).
 - A dedicated pull subscription on that topic, with `roles/pubsub.subscriber` granted to the application's Google Cloud identity. Do not share the audit consumer's subscription: consumers on one subscription divide messages.
-- GitHub organization Projects and credentials that can read the source issues/pull requests and write to destination projects.
+- GitHub credentials with access to the destinations configured in rules: organization Projects for project actions, or repository Actions for workflow dispatches.
 - Docker, or the Go version required by [go.mod](../go.mod) to build from source.
 
 A useful subscription filter is:
@@ -20,11 +20,13 @@ A useful subscription filter is:
 attributes.action = "opened" AND (attributes.gh_event = "issues" OR attributes.gh_event = "pull_request")
 ```
 
+For workflow orchestration use the expanded subscription filter and webhook event subscriptions in [Workflow orchestration](WORKFLOWS.md). The opened-only filter above excludes workflow and push events.
+
 Repository visibility is in the webhook body and cannot be filtered through these attributes.
 
 ## Configure GitHub access
 
-Create and install a GitHub App on all repositories your rules may match. Grant organization **Projects: read and write**, repository **Issues: read**, and **Pull requests: read**. App webhooks may remain disabled. Generate a private key, store it outside git, and mount it read-only. Set the App ID, installation ID, and key path described in [Configuration](CONFIGURATION.md). Installation tokens renew automatically.
+Create and install a GitHub App on all repositories your rules may match. Grant organization **Projects: read and write**, repository **Issues: read**, and **Pull requests: read**. For dispatch rules, grant repository **Actions: read and write** on destination repositories. Dispatch-only deployments do not require Projects, Issues or Pull requests permissions. The webhook receiver must subscribe to the source events; see [Workflow orchestration](WORKFLOWS.md). App webhooks may remain disabled when a separate receiver already supplies those events. Generate a private key, store it outside git, and mount it read-only. Set the App ID, installation ID, and key path described in [Configuration](CONFIGURATION.md). Installation tokens renew automatically.
 
 Alternatively mount a static token through `GITHUB_TOKEN_FILE` with equivalent access. You must manage its expiration and rotation.
 

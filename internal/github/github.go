@@ -1,4 +1,4 @@
-// Package github provides the narrowly scoped Projects v2 API action.
+// Package github provides scoped Projects v2 and workflow dispatch API actions.
 package github
 
 import (
@@ -19,16 +19,17 @@ const maxResponseBytes = 1 << 20
 
 // Client never follows redirects and never exposes response bodies in errors.
 type Client struct {
-	token    string
-	app      *appCredentials
-	endpoint string
-	http     *http.Client
-	mu       sync.Mutex
-	projects map[string]string
+	token        string
+	app          *appCredentials
+	endpoint     string
+	restEndpoint string
+	http         *http.Client
+	mu           sync.Mutex
+	projects     map[string]string
 }
 
 func NewClient(token string) *Client {
-	return &Client{token: token, endpoint: endpoint, http: &http.Client{Timeout: 30 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}, projects: make(map[string]string)}
+	return &Client{token: token, endpoint: endpoint, restEndpoint: "https://api.github.com", http: &http.Client{Timeout: 30 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}, projects: make(map[string]string)}
 }
 
 func (c *Client) request(ctx context.Context, query string, variables map[string]any, out any) error {

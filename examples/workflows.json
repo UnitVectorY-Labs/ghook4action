@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "name": "deploy-after-upstream-ci",
+      "match": {
+        "events": ["workflow_run"],
+        "actions": ["completed"],
+        "repository_owner": "example-org",
+        "repository_private": true,
+        "repositories": ["upstream"],
+        "branches": ["main"],
+        "workflow_paths": [".github/workflows/ci.yml"],
+        "workflow_events": ["push"],
+        "conclusions": ["success"]
+      },
+      "actions": [
+        {
+          "type": "workflow_dispatch",
+          "workflow": {
+            "owner": "example-org",
+            "repository": "downstream",
+            "id": "deploy.yml",
+            "ref": "main",
+            "inputs": {"environment": "staging"},
+            "source_inputs": {
+              "source_repository": "repository",
+              "source_sha": "sha",
+              "source_run_id": "run_id",
+              "source_run_attempt": "run_attempt"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

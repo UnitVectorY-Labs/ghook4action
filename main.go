@@ -57,6 +57,14 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	projects, workflows := false, false
+	for _, rule := range cfg.Rules {
+		for _, action := range rule.Actions {
+			projects = projects || action.Type == "add_to_project"
+			workflows = workflows || action.Type == "workflow_dispatch"
+		}
+	}
+	githubClient.ConfigurePermissions(projects, workflows)
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 	var ready atomic.Bool
@@ -91,8 +99,15 @@ func run() error {
 	defer stopPreflight()
 	for _, rule := range cfg.Rules {
 		for _, action := range rule.Actions {
-			if err := githubClient.CheckProject(preflightCtx, action.Project.Owner, action.Project.Number); err != nil {
-				return fmt.Errorf("GitHub project access check failed: %w", err)
+			var err error
+			if action.Type == "add_to_project" {
+				err = githubClient.CheckProject(preflightCtx, action.Project.Owner, action.Project.Number)
+			} else {
+				w := action.Workflow
+				err = githubClient.CheckWorkflow(preflightCtx, w.Owner, w.Repository, w.ID)
+			}
+			if err != nil {
+				return fmt.Errorf("GitHub destination access check failed: %w", err)
 			}
 		}
 	}

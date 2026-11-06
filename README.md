@@ -4,7 +4,7 @@
 
 A configurable rules engine for GitHub webhook events delivered through Google Cloud Pub/Sub.
 
-Consumes verified webhook messages from ghook2pubsub, evaluates explicit repository rules, and adds matching issues and pull requests to GitHub organization projects. No privileged pull request workflow is required.
+Consumes verified webhook messages from ghook2pubsub, evaluates explicit repository rules, adds matching issues and pull requests to GitHub organization projects, and triggers downstream workflows after configured branch pushes or workflow completions. No privileged pull request workflow is required.
 
 ## Documentation
 

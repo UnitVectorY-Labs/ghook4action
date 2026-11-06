@@ -73,3 +73,20 @@ func TestRejectInvalidAndBounded(t *testing.T) {
 		t.Fatal("oversize decompression accepted")
 	}
 }
+
+func TestWorkflowSourceRepository(t *testing.T) {
+	for _, tt := range []struct {
+		head string
+		want string
+	}{
+		{`{"name":"repo","owner":{"login":"Org"}}`, "main"},
+		{`{"name":"repo","owner":{"login":"fork-owner"}}`, ""},
+		{`null`, ""},
+	} {
+		payload := `{"action":"completed","repository":{"name":"repo","private":false,"owner":{"login":"Org"}},"workflow_run":{"head_branch":"main","head_repository":` + tt.head + `}}`
+		e, err := Decode([]byte(payload), map[string]string{"gh_event": "workflow_run", "action": "completed"})
+		if err != nil || e.Branch != tt.want {
+			t.Fatalf("fork routing: %+v %v", e, err)
+		}
+	}
+}
