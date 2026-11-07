@@ -23,6 +23,14 @@ type Event struct {
 	RepositoryOwner   string
 	RepositoryName    string
 	RepositoryPrivate *bool
+	Branch            string
+	SHA               string
+	WorkflowPath      string
+	WorkflowEvent     string
+	Conclusion        string
+	RunID             int64
+	RunAttempt        int
+	Deleted           bool
 	ContentID         string
 }
 
@@ -67,7 +75,25 @@ func Decode(data []byte, attrs map[string]string) (*Event, error) {
 		body = []byte(form.Get("payload"))
 	}
 	var payload struct {
-		Action     string `json:"action"`
+		Action      string `json:"action"`
+		Ref         string `json:"ref"`
+		After       string `json:"after"`
+		Deleted     bool   `json:"deleted"`
+		WorkflowRun *struct {
+			ID             int64  `json:"id"`
+			RunAttempt     int    `json:"run_attempt"`
+			HeadBranch     string `json:"head_branch"`
+			HeadSHA        string `json:"head_sha"`
+			Path           string `json:"path"`
+			Event          string `json:"event"`
+			Conclusion     string `json:"conclusion"`
+			HeadRepository *struct {
+				Name  string `json:"name"`
+				Owner struct {
+					Login string `json:"login"`
+				} `json:"owner"`
+			} `json:"head_repository"`
+		} `json:"workflow_run"`
 		Repository *struct {
 			Name    string `json:"name"`
 			Private *bool  `json:"private"`
@@ -86,10 +112,10 @@ func Decode(data []byte, attrs map[string]string) (*Event, error) {
 		return nil, errors.New("invalid webhook JSON")
 	}
 	event := &Event{Type: attrs["gh_event"], Action: payload.Action}
-	if event.Type != "issues" && event.Type != "pull_request" {
+	if event.Type != "issues" && event.Type != "pull_request" && event.Type != "workflow_run" && event.Type != "push" {
 		return event, nil
 	}
-	if payload.Action == "" {
+	if payload.Action == "" && event.Type != "push" {
 		return nil, errors.New("missing webhook action")
 	}
 	if action := attrs["action"]; action != "" && action != payload.Action {
@@ -101,13 +127,32 @@ func Decode(data []byte, attrs map[string]string) (*Event, error) {
 	event.RepositoryOwner = payload.Repository.Owner.Login
 	event.RepositoryName = payload.Repository.Name
 	event.RepositoryPrivate = payload.Repository.Private
+	if event.Type == "push" {
+		event.Deleted = payload.Deleted
+		if strings.HasPrefix(payload.Ref, "refs/heads/") {
+			event.Branch = strings.TrimPrefix(payload.Ref, "refs/heads/")
+		}
+		event.SHA = payload.After
+	}
+	if event.Type == "workflow_run" {
+		run := payload.WorkflowRun
+		if run == nil {
+			return nil, errors.New("missing workflow run")
+		}
+		// Fork runs never qualify as trusted source-repository completions.
+		if run.HeadRepository != nil && strings.EqualFold(run.HeadRepository.Owner.Login, event.RepositoryOwner) && strings.EqualFold(run.HeadRepository.Name, event.RepositoryName) {
+			event.Branch = run.HeadBranch
+		}
+		event.SHA, event.WorkflowPath, event.WorkflowEvent, event.Conclusion = run.HeadSHA, run.Path, run.Event, run.Conclusion
+		event.RunID, event.RunAttempt = run.ID, run.RunAttempt
+	}
 	if event.Type == "issues" && payload.Issue != nil {
 		event.ContentID = payload.Issue.NodeID
 	}
 	if event.Type == "pull_request" && payload.PullRequest != nil {
 		event.ContentID = payload.PullRequest.NodeID
 	}
-	if event.Action == "opened" && (event.ContentID == "" || len(event.ContentID) > 512 || strings.ContainsAny(event.ContentID, " \t\r\n")) {
+	if (event.Type == "issues" || event.Type == "pull_request") && event.Action == "opened" && (event.ContentID == "" || len(event.ContentID) > 512 || strings.ContainsAny(event.ContentID, " \t\r\n")) {
 		return nil, errors.New("missing or invalid content node ID")
 	}
 	return event, nil

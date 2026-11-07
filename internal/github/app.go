@@ -27,6 +27,7 @@ type appCredentials struct {
 	appID          string
 	installationID int64
 	key            *rsa.PrivateKey
+	permissions    map[string]string
 	endpoint       string
 	now            func() time.Time
 	gate           chan struct{}
@@ -108,7 +109,14 @@ func (a *appCredentials) token(ctx context.Context, client *http.Client) (string
 	if err != nil {
 		return "", err
 	}
-	payload := []byte(`{"permissions":{"organization_projects":"write","issues":"read","pull_requests":"read"}}`)
+	permissions := a.permissions
+	if permissions == nil {
+		permissions = map[string]string{"organization_projects": "write", "issues": "read", "pull_requests": "read"}
+	}
+	payload, err := json.Marshal(map[string]any{"permissions": permissions})
+	if err != nil {
+		return "", errors.New("cannot encode installation permissions")
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/app/installations/%d/access_tokens", a.endpoint, a.installationID), bytes.NewReader(payload))
 	if err != nil {
 		return "", errors.New("cannot create GitHub installation token request")
