@@ -20,6 +20,12 @@ import (
 // This test uses a disposable Pub/Sub emulator and an HTTP mock, never a real
 // subscription or GitHub destination. Use the emulator command in OPERATIONS.md.
 func TestEmulatorWorkflowOrchestration(t *testing.T) {
+	for _, origin := range []string{"push", "release"} {
+		t.Run(origin, func(t *testing.T) { testEmulatorWorkflowOrchestration(t, origin) })
+	}
+}
+
+func testEmulatorWorkflowOrchestration(t *testing.T, origin string) {
 	if os.Getenv("PUBSUB_EMULATOR_HOST") == "" {
 		t.Skip("requires isolated Pub/Sub emulator")
 	}
@@ -49,6 +55,16 @@ func TestEmulatorWorkflowOrchestration(t *testing.T) {
 	cfg, err := rules.Parse(b)
 	if err != nil {
 		t.Fatal(err)
+	}
+	branch := "main"
+	if origin == "release" {
+		branch = "v1.2.3"
+		cfg.Rules[0].Match.Branches = nil
+		cfg.Rules[0].Match.TagPatterns = []string{"v[0-9]*"}
+		cfg.Rules[0].Match.WorkflowEvents = []string{"release"}
+		if err := cfg.Validate(); err != nil {
+			t.Fatal(err)
+		}
 	}
 	var calls atomic.Int32
 	completed := make(chan struct{}, 8)
@@ -90,7 +106,7 @@ func TestEmulatorWorkflowOrchestration(t *testing.T) {
 		}
 	}()
 	for _, conclusion := range []string{"failure", "success"} {
-		payload := `{"action":"completed","repository":{"name":"upstream","private":true,"owner":{"login":"example-org"}},"workflow_run":{"id":123,"run_attempt":1,"head_branch":"main","head_sha":"` + strings.Repeat("a", 40) + `","path":".github/workflows/ci.yml","event":"push","conclusion":"` + conclusion + `","head_repository":{"name":"upstream","owner":{"login":"example-org"}}}}`
+		payload := `{"action":"completed","repository":{"name":"upstream","private":true,"owner":{"login":"example-org"}},"workflow_run":{"id":123,"run_attempt":1,"head_branch":"` + branch + `","head_sha":"` + strings.Repeat("a", 40) + `","path":".github/workflows/ci.yml","event":"` + origin + `","conclusion":"` + conclusion + `","head_repository":{"name":"upstream","owner":{"login":"example-org"}}}}`
 		if _, err := topic.Publish(ctx, &pubsub.Message{Data: []byte(payload), Attributes: map[string]string{"gh_event": "workflow_run", "action": "completed"}}).Get(ctx); err != nil {
 			t.Fatal(err)
 		}

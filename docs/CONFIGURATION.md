@@ -27,7 +27,7 @@ See [example rules](../examples/rules.json). The example routes public and priva
 
 Configuration version is `1`. Each named rule has `match` and `actions`. Match fields are ANDed; entries within `events` or `actions` are ORed. `repository_owner` and the explicit `repository_private` boolean are required. Optional `repositories` limits matching to those repository names. All matching rules execute in file order. The project action is `add_to_project`, whose project contains organization `owner` and positive project `number`.
 
-Workflow rules add exact branch, workflow path, origin event, and conclusion filters and the `workflow_dispatch` action. See [workflow orchestration](WORKFLOWS.md) and its [example configuration](../examples/workflows.json). Existing version 1 project configurations remain compatible.
+Workflow rules add exact branch (or release-tag pattern), workflow path, origin event, and conclusion filters and the `workflow_dispatch` action. See [workflow orchestration](WORKFLOWS.md) and its [example configuration](../examples/workflows.json). Existing version 1 project configurations remain compatible.
 
 Rules are data, with no scripts, shell interpolation, remote templates, or arbitrary expressions. Unknown keys and invalid configuration fail startup. Narrow organization matching prevents unrelated webhook traffic from invoking privileged actions.
 

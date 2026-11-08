@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -27,6 +28,7 @@ type Rule struct {
 }
 type Match struct {
 	Branches          []string `json:"branches,omitempty"`
+	TagPatterns       []string `json:"tag_patterns,omitempty"`
 	WorkflowPaths     []string `json:"workflow_paths,omitempty"`
 	WorkflowEvents    []string `json:"workflow_events,omitempty"`
 	Conclusions       []string `json:"conclusions,omitempty"`
@@ -115,15 +117,31 @@ func (c *Config) Validate() error {
 		}
 		orchestration := contains(r.Match.Events, "workflow_run", false) || contains(r.Match.Events, "push", false)
 		if orchestration {
-			if len(r.Match.Events) != 1 || len(r.Match.Repositories) == 0 || len(r.Match.Branches) == 0 {
-				return fail("workflow and push rules require one event, repositories and branches")
+			if len(r.Match.Events) != 1 || len(r.Match.Repositories) == 0 {
+				return fail("workflow and push rules require one event and repositories")
+			}
+			release := contains(r.Match.WorkflowEvents, "release", false)
+			if release {
+				if r.Match.Events[0] != "workflow_run" || len(r.Match.WorkflowEvents) != 1 || len(r.Match.Branches) != 0 || len(r.Match.TagPatterns) == 0 {
+					return fail("release workflows require tag_patterns instead of branches and no other origin events")
+				}
+				for _, pattern := range r.Match.TagPatterns {
+					if strings.TrimSpace(pattern) == "" || strings.ContainsAny(pattern, "\r\n") {
+						return fail("invalid release tag pattern")
+					}
+					if _, err := path.Match(pattern, ""); err != nil {
+						return fail("invalid release tag pattern")
+					}
+				}
+			} else if len(r.Match.Branches) == 0 || len(r.Match.TagPatterns) != 0 {
+				return fail("non-release workflow and push rules require branches and no tag_patterns")
 			}
 			if r.Match.Events[0] == "workflow_run" {
 				if len(r.Match.Actions) != 1 || r.Match.Actions[0] != "completed" || len(r.Match.WorkflowPaths) == 0 || len(r.Match.WorkflowEvents) == 0 || len(r.Match.Conclusions) == 0 {
 					return fail("workflow_run requires completed action, workflow_paths, workflow_events and conclusions")
 				}
 				for _, e := range r.Match.WorkflowEvents {
-					if e != "push" && e != "workflow_dispatch" && e != "schedule" && e != "repository_dispatch" && e != "workflow_run" {
+					if e != "push" && e != "workflow_dispatch" && e != "schedule" && e != "repository_dispatch" && e != "workflow_run" && e != "release" {
 						return fail("unsupported workflow origin event")
 					}
 				}
@@ -159,7 +177,7 @@ func (c *Config) Validate() error {
 					return fail("unsupported webhook action")
 				}
 			}
-			if len(r.Match.Branches)+len(r.Match.WorkflowPaths)+len(r.Match.WorkflowEvents)+len(r.Match.Conclusions) != 0 {
+			if len(r.Match.Branches)+len(r.Match.TagPatterns)+len(r.Match.WorkflowPaths)+len(r.Match.WorkflowEvents)+len(r.Match.Conclusions) != 0 {
 				return fail("workflow filters require workflow or push events")
 			}
 		}
@@ -215,6 +233,17 @@ func contains(values []string, value string, fold bool) bool {
 	return false
 }
 
+// matchesTag uses path.Match globs against workflow_run.head_branch for release
+// origins. Decode leaves that field empty for fork or missing head repositories.
+func matchesTag(patterns []string, tag string) bool {
+	for _, pattern := range patterns {
+		if matched, err := path.Match(pattern, tag); err == nil && matched {
+			return true
+		}
+	}
+	return false
+}
+
 // Apply runs every matching rule. Dispatches may repeat on redelivery or partial failure;
 // downstream workflows must handle duplicate source revisions/runs.
 func (c *Config) Apply(ctx context.Context, event *webhook.Event, adder ProjectAdder) (int, error) {
@@ -231,6 +260,9 @@ func (c *Config) Apply(ctx context.Context, event *webhook.Event, adder ProjectA
 			continue
 		}
 		if len(m.Branches) > 0 && (!contains(m.Branches, event.Branch, false) || event.Deleted) {
+			continue
+		}
+		if len(m.TagPatterns) > 0 && (event.Branch == "" || event.Deleted || !matchesTag(m.TagPatterns, event.Branch)) {
 			continue
 		}
 		if event.Type == "workflow_run" && (!contains(m.WorkflowPaths, event.WorkflowPath, false) || !contains(m.WorkflowEvents, event.WorkflowEvent, false) || !contains(m.Conclusions, event.Conclusion, false)) {

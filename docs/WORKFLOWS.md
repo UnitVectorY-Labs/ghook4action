@@ -40,12 +40,12 @@ A `workflow_run` rule requires:
 | `events: ["workflow_run"]` | Exactly one event kind per orchestration rule. |
 | `actions: ["completed"]` | Only completed runs qualify. |
 | `repository_owner`, `repository_private`, `repositories` | Explicit source organization, visibility, and repository names. |
-| `branches: ["main"]` | Exact source head branch names, case-sensitive; no globs. |
+| `branches: ["main"]` | Exact source head branch names for non-release origins, case-sensitive; no globs. Release origins use `tag_patterns` instead. |
 | `workflow_paths: [".github/workflows/ci.yml"]` | Exact source workflow paths, case-sensitive. |
 | `workflow_events: ["push"]` | The event that originally started upstream CI. |
 | `conclusions: ["success"]` | Explicit accepted results; completion alone does not imply success. |
 
-Fields are ANDed; values inside each array are ORed. Owner/repository names are case-insensitive. Other accepted origins are `workflow_dispatch`, `schedule`, `repository_dispatch`, and `workflow_run`; pull request origins are intentionally excluded from orchestration. Fork head repositories and missing head repository metadata cannot match. Other supported conclusions are `failure`, `neutral`, `cancelled`, `skipped`, `timed_out`, `action_required`, `stale`, and `startup_failure`.
+Fields are ANDed; values inside each array are ORed. Owner/repository names are case-insensitive. Other accepted branch-based origins are `workflow_dispatch`, `schedule`, `repository_dispatch`, and `workflow_run`; pull request origins are intentionally excluded from orchestration. Fork head repositories and missing head repository metadata cannot match. Other supported conclusions are `failure`, `neutral`, `cancelled`, `skipped`, `timed_out`, `action_required`, `stale`, and `startup_failure`.
 
 The `workflow_dispatch` action contains a `workflow` object:
 
@@ -57,7 +57,7 @@ The `workflow_dispatch` action contains a `workflow` object:
 | `inputs` | Optional literal string inputs. |
 | `source_inputs` | Optional mapping from destination input names to supported source metadata. |
 
-Supported source selectors are `repository` (`owner/name`), `branch`, `sha`, `event` (the webhook kind), `workflow_path`, `run_id`, and `run_attempt`. The last three require `workflow_run`. For example, `"source_sha": "sha"` passes the upstream commit as the downstream `source_sha` input. Input names must start with a letter or underscore and contain only letters, digits, underscores, or hyphens. Literal and source mappings cannot overlap; the combined limit is 25. All values are strings. These are explicit field mappings, with no template engine or arbitrary payload access. Do not put secrets in inputs.
+Supported source selectors are `repository` (`owner/name`), `branch` (the source `head_branch`, which contains the tag for release-originated runs), `sha`, `event` (the webhook kind), `workflow_path`, `run_id`, and `run_attempt`. The last three require `workflow_run`. For example, `"source_sha": "sha"` passes the upstream commit as the downstream `source_sha` input. Input names must start with a letter or underscore and contain only letters, digits, underscores, or hyphens. Literal and source mappings cannot overlap; the combined limit is 25. All values are strings. These are explicit field mappings, with no template engine or arbitrary payload access. Do not put secrets in inputs.
 
 ```mermaid
 flowchart TD
@@ -73,6 +73,30 @@ flowchart TD
     API -->|"API or network failure"| Retry
     Retry --> Duplicate["Earlier dispatches may repeat; downstream deduplicates"]
 ```
+
+## Release asset completion
+
+To rebuild a consumer when a producer has finished publishing release assets, match the producer's successful `workflow_run` completion with `workflow_events: ["release"]`. This waits for the selected workflow to finish; a `release` webhook alone does not establish that its asset-upload jobs have completed. No notification workflow or dispatch step is needed in the producer.
+
+GitHub release runs use the release tag in `workflow_run.head_branch`. Release-origin rules therefore require `tag_patterns` and forbid `branches`. A release origin cannot be combined with other origins in one rule; use separate rules for branch-based CI and release publication. All existing source owner, repository, visibility, exact workflow path, completion action, conclusion, and same-repository head checks still apply. Fork heads and missing head-repository or ref metadata never match, even with `"*"`.
+
+```json
+{
+  "events": ["workflow_run"],
+  "actions": ["completed"],
+  "repository_owner": "example-org",
+  "repository_private": true,
+  "repositories": ["upstream"],
+  "tag_patterns": ["v[0-9]*"],
+  "workflow_paths": [".github/workflows/release.yml"],
+  "workflow_events": ["release"],
+  "conclusions": ["success"]
+}
+```
+
+Tag patterns are case-sensitive [Go `path.Match` globs](https://pkg.go.dev/path#Match), not regular expressions or GitHub Actions minimatch expressions. `*` matches zero or more non-slash characters, `?` matches one non-slash character, and character classes such as `[0-9]` are supported. Patterns match the complete tag; `v*` does not match `releases/v1.0.0`. Multiple patterns are alternatives. Empty, whitespace-only, malformed, or multiline patterns fail validation. `tag_patterns` is valid only for release-origin workflow rules, not push webhooks or project routing. See [the complete release rule example](../examples/release-workflow.json).
+
+The downstream workflow and its ref remain explicit and independent of the producer tag. Without pinned artifact inputs, the consumer resolves whatever its build calls the latest release; prerelease or older-release completions may rebuild without changing that selection. Success gates the entire source workflow, so a failure in an unrelated job can suppress dispatch even after assets were uploaded. Reruns and duplicate deliveries can repeat downstream builds. A periodic consumer build can still refresh base images and dependencies that have no configured producer event.
 
 ## Downstream workflow contract
 

@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "name": "build-after-release-assets",
+      "match": {
+        "events": [
+          "workflow_run"
+        ],
+        "actions": [
+          "completed"
+        ],
+        "repository_owner": "example-org",
+        "repository_private": true,
+        "repositories": [
+          "upstream"
+        ],
+        "workflow_paths": [
+          ".github/workflows/release.yml"
+        ],
+        "workflow_events": [
+          "release"
+        ],
+        "conclusions": [
+          "success"
+        ],
+        "tag_patterns": [
+          "v[0-9]*"
+        ]
+      },
+      "actions": [
+        {
+          "type": "workflow_dispatch",
+          "workflow": {
+            "owner": "example-org",
+            "repository": "downstream",
+            "id": "deploy.yml",
+            "ref": "main",
+            "inputs": {
+              "environment": "staging"
+            },
+            "source_inputs": {
+              "source_repository": "repository",
+              "source_sha": "sha",
+              "source_run_id": "run_id",
+              "source_run_attempt": "run_attempt"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
