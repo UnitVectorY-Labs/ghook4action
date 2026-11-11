@@ -4,7 +4,8 @@ package github
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -72,8 +73,8 @@ func (c *Client) request(ctx context.Context, query string, variables map[string
 		return errors.New("cannot read bounded GitHub response")
 	}
 	var envelope struct {
-		Data   json.RawMessage   `json:"data"`
-		Errors []json.RawMessage `json:"errors"`
+		Data   jsontext.Value   `json:"data"`
+		Errors []jsontext.Value `json:"errors"`
 	}
 	if err := json.Unmarshal(data, &envelope); err != nil {
 		return errors.New("invalid GitHub response")
