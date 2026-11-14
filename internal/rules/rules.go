@@ -2,12 +2,10 @@
 package rules
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path"
 	"regexp"
@@ -79,13 +77,8 @@ func Parse(data []byte) (*Config, error) {
 		return nil, errors.New("rules file exceeds size limit")
 	}
 	var c Config
-	d := json.NewDecoder(bytes.NewReader(data))
-	d.DisallowUnknownFields()
-	if err := d.Decode(&c); err != nil {
+	if err := json.Unmarshal(data, &c, json.RejectUnknownMembers(true)); err != nil {
 		return nil, errors.New("invalid rules JSON or unknown field")
-	}
-	if err := d.Decode(new(any)); err != io.EOF {
-		return nil, errors.New("rules must contain exactly one JSON object")
 	}
 	if err := c.Validate(); err != nil {
 		return nil, err

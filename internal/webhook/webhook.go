@@ -4,7 +4,8 @@ package webhook
 import (
 	"bytes"
 	"compress/gzip"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"io"
 	"net/url"
@@ -67,7 +68,7 @@ func Decode(data []byte, attrs map[string]string) (*Event, error) {
 	if len(body) > MaxPayloadBytes {
 		return nil, errors.New("decoded payload exceeds size limit")
 	}
-	if !json.Valid(body) {
+	if !jsontext.Value(body).IsValid() {
 		form, err := url.ParseQuery(string(body))
 		if err != nil || len(form["payload"]) != 1 {
 			return nil, errors.New("invalid webhook payload")
