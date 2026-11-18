@@ -4,7 +4,7 @@ go 1.27.0 // GOVERSION
 
 require (
 	cloud.google.com/go/pubsub v1.52.0
-	github.com/klauspost/compress v1.20.3
+	github.com/klauspost/compress v1.20.4
 	google.golang.org/grpc v1.85.0
 )
 
