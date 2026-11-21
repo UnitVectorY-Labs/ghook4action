@@ -25,5 +25,6 @@ The application consumes verified messages published by ghook2pubsub. Each rule 
 
 - [ghook2pubsub](https://github.com/UnitVectorY-Labs/ghook2pubsub) receives GitHub webhooks, verifies signatures, and publishes events to Pub/Sub.
 - [pubsub2postgresaudit](https://github.com/UnitVectorY-Labs/pubsub2postgresaudit) stores a separate subscription's messages in PostgreSQL for auditing.
+- [pubsub2webhook](https://github.com/UnitVectorY-Labs/pubsub2webhook) consumes Pub/Sub messages and replays them as HTTP webhook requests to internal or external endpoints through a separate subscription.
 
-Use separate subscriptions for the action consumer and audit consumer so both receive every relevant message.
+Use separate subscriptions for each downstream consumer so every service receives every relevant message.

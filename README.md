@@ -14,3 +14,4 @@ See the [documentation](docs/README.md) for [installation](docs/INSTALL.md), [co
 
 - [ghook2pubsub](https://github.com/UnitVectorY-Labs/ghook2pubsub) receives GitHub webhooks, verifies signatures, and publishes events to Pub/Sub for this application to consume.
 - [pubsub2postgresaudit](https://github.com/UnitVectorY-Labs/pubsub2postgresaudit) stores webhook messages in PostgreSQL for auditing through its own subscription, independently of this application's project actions.
+- [pubsub2webhook](https://github.com/UnitVectorY-Labs/pubsub2webhook) consumes Pub/Sub messages and replays them as HTTP webhook requests to internal or external endpoints through its own subscription.
