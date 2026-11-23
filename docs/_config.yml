@@ -1,9 +1,13 @@
 title: ghook4action
 description: "A configurable rules engine for GitHub webhook events delivered through Google Cloud Pub/Sub."
 
-remote_theme: UnitVectorY-Labs/uvy-docs-theme@v0.2.0
+remote_theme: UnitVectorY-Labs/uvy-docs-theme@v0.4.0
 plugins:
   - jekyll-remote-theme
+
+uvy_docs:
+  license: "MIT License"
+  license_url: "https://github.com/UnitVectorY-Labs/ghook4action/blob/main/LICENSE"
 
 callouts:
   highlight:
