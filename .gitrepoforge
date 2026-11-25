@@ -9,7 +9,5 @@ config:
   release_github: false
   status: wip
   justfile: false
-  codecov:
-    enabled: false
   docs:
     enabled: true
