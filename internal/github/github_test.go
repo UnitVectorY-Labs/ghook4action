@@ -2,7 +2,7 @@ package github
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -21,7 +21,10 @@ func TestAddIdempotentAndCachesProject(t *testing.T) {
 			Query     string         `json:"query"`
 			Variables map[string]any `json:"variables"`
 		}
-		json.NewDecoder(r.Body).Decode(&req)
+		if err := json.UnmarshalRead(r.Body, &req); err != nil {
+			t.Error(err)
+			return
+		}
 		if strings.HasPrefix(req.Query, "query") {
 			queries++
 			fmt.Fprint(w, `{"data":{"organization":{"projectV2":{"id":"PVT_1"}}}}`)
@@ -47,7 +50,7 @@ func TestAddIdempotentAndCachesProject(t *testing.T) {
 	}
 }
 func TestRejectErrorsWithoutLeakingBody(t *testing.T) {
-	for _, body := range []string{`{"errors":[{"message":"private secret details"}]}`, `{"data":{"organization":null}}`, `{"data":null}`, `not JSON`, strings.Repeat("x", maxResponseBytes+1)} {
+	for _, body := range []string{`{"errors":[{"message":"private secret details"}]}`, `{"data":{"organization":null}}`, `{"data":null}`, `not JSON`, `{"data":{},"data":{"organization":{"projectV2":{"id":"PVT_1"}}}}`, `{"data":{"organization":{"projectV2":{"id":"PVT_1","id":"PVT_2"}}}}`, strings.Repeat("x", maxResponseBytes+1)} {
 		t.Run(fmt.Sprint(len(body)), func(t *testing.T) {
 			s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, body) }))
 			defer s.Close()

@@ -81,3 +81,17 @@ func TestPartialActionsRetrySafely(t *testing.T) {
 		t.Fatalf("unexpected effects %+v", f)
 	}
 }
+
+func TestRejectAmbiguousRulesJSON(t *testing.T) {
+	for name, input := range map[string]string{
+		"duplicate":      strings.Replace(configJSON, `"version":1`, `"version":1,"version":1`, 1),
+		"case-sensitive": strings.Replace(configJSON, `"version":1`, `"Version":1`, 1),
+		"invalid UTF-8":  strings.Replace(configJSON, `"public"`, "\"\xff\"", 1),
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := Parse([]byte(input)); err == nil {
+				t.Fatal("ambiguous rules accepted")
+			}
+		})
+	}
+}

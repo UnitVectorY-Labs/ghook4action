@@ -2,7 +2,7 @@ package github
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -20,7 +20,7 @@ func TestWorkflowAPI(t *testing.T) {
 					Ref    string            `json:"ref"`
 					Inputs map[string]string `json:"inputs"`
 				}
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Ref != "main" || body.Inputs["sha"] != "abc" {
+				if err := json.UnmarshalRead(r.Body, &body); err != nil || body.Ref != "main" || body.Inputs["sha"] != "abc" {
 					t.Error("invalid body")
 				}
 				w.Header().Set("Location", "https://example.invalid/never-follow")
@@ -47,7 +47,7 @@ func TestWorkflowPermissionScope(t *testing.T) {
 		var body struct {
 			Permissions map[string]string `json:"permissions"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := json.UnmarshalRead(r.Body, &body); err != nil {
 			t.Error(err)
 		}
 		if len(body.Permissions) != 1 || body.Permissions["actions"] != "write" {

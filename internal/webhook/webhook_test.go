@@ -3,10 +3,13 @@ package webhook
 import (
 	"bytes"
 	"compress/gzip"
-	"encoding/json"
-	"github.com/klauspost/compress/zstd"
+	"encoding/json/v2"
+	"fmt"
 	"net/url"
+	"strings"
 	"testing"
+
+	"github.com/klauspost/compress/zstd"
 )
 
 const issue = `{"action":"opened","repository":{"owner":{"login":"Org"},"name":"repo","private":false},"issue":{"node_id":"I_123"}}`
@@ -87,6 +90,26 @@ func TestWorkflowSourceRepository(t *testing.T) {
 		e, err := Decode([]byte(payload), map[string]string{"gh_event": "workflow_run", "action": "completed"})
 		if err != nil || e.Branch != tt.want {
 			t.Fatalf("fork routing: %+v %v", e, err)
+		}
+	}
+}
+
+func TestRejectAmbiguousJSON(t *testing.T) {
+	cases := map[string]string{
+		"duplicate routing field": strings.Replace(issue, `"private":false`, `"private":false,"private":true`, 1),
+		"invalid UTF-8":           strings.Replace(issue, `"Org"`, "\"\xff\"", 1),
+		"case-sensitive field":    strings.Replace(issue, `"private":false`, `"Private":false`, 1),
+	}
+	for name, payload := range cases {
+		for _, form := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/form=%t", name, form), func(t *testing.T) {
+				if form {
+					payload = url.Values{"payload": {payload}}.Encode()
+				}
+				if _, err := Decode([]byte(payload), map[string]string{"gh_event": "issues"}); err == nil {
+					t.Fatal("ambiguous payload accepted")
+				}
+			})
 		}
 	}
 }

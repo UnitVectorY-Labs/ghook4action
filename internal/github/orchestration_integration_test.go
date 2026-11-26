@@ -2,7 +2,7 @@ package github
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -78,7 +78,7 @@ func testEmulatorWorkflowOrchestration(t *testing.T, origin string) {
 			Ref    string            `json:"ref"`
 			Inputs map[string]string `json:"inputs"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Ref != "main" || body.Inputs["source_sha"] != strings.Repeat("a", 40) || body.Inputs["source_run_id"] != "123" {
+		if err := json.UnmarshalRead(r.Body, &body); err != nil || body.Ref != "main" || body.Inputs["source_sha"] != strings.Repeat("a", 40) || body.Inputs["source_run_id"] != "123" {
 			t.Error("incorrect dispatch body")
 		}
 		if calls.Add(1) == 1 {

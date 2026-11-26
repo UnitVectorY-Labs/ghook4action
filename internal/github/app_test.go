@@ -10,7 +10,7 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/json"
+	"encoding/json/v2"
 	"encoding/pem"
 	"fmt"
 	"net/http"
@@ -115,7 +115,7 @@ func TestAppAuthScopeReuseRefreshAndGraphQL(t *testing.T) {
 			var p struct {
 				Permissions map[string]string `json:"permissions"`
 			}
-			if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
+			if err := json.UnmarshalRead(r.Body, &p); err != nil {
 				t.Error(err)
 			}
 			if len(p.Permissions) != 3 || p.Permissions["organization_projects"] != "write" || p.Permissions["issues"] != "read" || p.Permissions["pull_requests"] != "read" {
